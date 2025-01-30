@@ -11,8 +11,6 @@ WORKDIR /app
 COPY . .
 
 # Instala las dependencias, incluyendo whisper
-RUN pip install "git+https://github.com/openai/whisper.git" 
-RUN apt-get install -y ffmpeg
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Puerto

@@ -1,51 +1,59 @@
-import os
-from flask import Flask, abort, request
-from flask_cors import CORS
-from tempfile import NamedTemporaryFile
+from flask import Flask, request, jsonify
 import whisper
-import torch
-
-# Check if NVIDIA GPU is available
-torch.cuda.is_available()
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-
-# Load the Whisper model:
-model = whisper.load_model("base", device=DEVICE)
+import os
+import time
+import json
 
 app = Flask(__name__)
-CORS(app)
+
+# Load Whisper model
+model = whisper.load_model("base")
 
 @app.route("/")
 def hello():
-    return "test"
+    return "asd"
 
-@app.route('/whisper', methods=['POST'])
-def handler():
-    if not request.files:
-        # If the user didn't submit any files, return a 400 (Bad Request) error.
-        abort(400)
 
-    # For each file, let's store the results in a list of dictionaries.
-    results = []
+@app.route('/transcribe', methods=['POST'])
+def transcribe_audio():
+    start = time.time()
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
 
-    # Loop over every file that the user submitted.
-    for filename, handle in request.files.items():
-        # Create a temporary file.
-        # The location of the temporary file is available in `temp.name`.
-        temp = NamedTemporaryFile()
-        # Write the user's uploaded file to the temporary file.
-        # The file will get deleted when it drops out of scope.
-        handle.save(temp)
-        # Let's get the transcript of the temporary file.
-        result = model.transcribe(temp.name)
-        # Now we can store the result object for this file.
-        results.append({
-            'filename': filename,
-            'transcript': result['text'],
-        })
+    file = request.files['file']
 
-    # This will be automatically converted to JSON.
-    return {'results': results}
+    if file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    if file:
+        # Save the file temporarily
+        filepath = os.path.join("/tmp", file.filename)
+        file.save(filepath)
+
+        # Get the size of the file
+        file_size = os.path.getsize(filepath)
+
+        transcribe_start = time.time()
+        # Process the file with Whisper
+        result = model.transcribe(filepath)
+        
+        transcribe_end = time.time()
+        os.remove(filepath)  # Remove the file after processing
+
+        result = {
+            "transcription": result["text"],
+            "stats": {
+                "total_processing_time": transcribe_end - transcribe_start,
+                "words_per_second": round(len(result["text"]) / (transcribe_end - transcribe_start), 2),
+                "file_size_in_bytes": file_size
+            },
+            "filename": file.filename,
+        }
+
+        return jsonify(result)
+
+    return jsonify({"error": "Invalid request"}), 400
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
