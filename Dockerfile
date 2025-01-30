@@ -1,8 +1,11 @@
-FROM python:3.6
-MAINTAINER Octavio Flores
-COPY . /app
+FROM python:3.9-slim
+
 WORKDIR /app
-RUN pip install "git+https://github.com/openai/whisper.git" 
-RUN pip install -r requirements.txt
-ENTRYPOINT ["python"]
-CMD ["app.py"]
+
+COPY . /app
+RUN pip3 install "git+https://github.com/openai/whisper.git" 
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]
