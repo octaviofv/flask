@@ -7,8 +7,8 @@ RUN apt-get update && apt-get install -y git ffmpeg
 # Configura el directorio de trabajo
 WORKDIR /app
 
-# Copia los archivos de la aplicación
-COPY . /app
+# Copiar el código fuente
+COPY . .
 
 # Instala las dependencias, incluyendo whisper
 RUN pip install "git+https://github.com/openai/whisper.git" 

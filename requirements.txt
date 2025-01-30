@@ -1,3 +1,6 @@
-flask
-flask-cors
 luminoth
+Flask==2.2.5
+Flask-Cors==3.0.10
+Jinja2==3.0.3
+MarkupSafe==2.0.1
+torch
