@@ -2,7 +2,7 @@
 FROM python:3.9-slim
 
 # Instala git antes de ejecutar pip install
-RUN apt-get update && apt-get install -y git
+RUN apt-get update && apt-get install -y git ffmpeg
 
 # Configura el directorio de trabajo
 WORKDIR /app
@@ -12,6 +12,7 @@ COPY . /app
 
 # Instala las dependencias, incluyendo whisper
 RUN pip install "git+https://github.com/openai/whisper.git" 
+RUN apt-get install -y ffmpeg
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Puerto
