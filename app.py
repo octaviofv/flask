@@ -2,17 +2,15 @@ from flask import Flask, request, jsonify
 import whisper
 import os
 import time
-import json
 
 app = Flask(__name__)
 
-# Load Whisper model
+# Carga del modelo Whisper
 model = whisper.load_model("base")
 
 @app.route("/")
 def hello():
-    return "asd"
-
+    return "Servidor Flask corriendo vía HTTP interno (TLSv1 externo vía stunnel)"
 
 @app.route('/transcribe', methods=['POST'])
 def transcribe_audio():
@@ -26,24 +24,23 @@ def transcribe_audio():
         return jsonify({"error": "No selected file"}), 400
 
     if file:
-        # Save the file temporarily
+        # Guardar el archivo temporalmente
         filepath = os.path.join("/tmp", file.filename)
         file.save(filepath)
 
-        # Get the size of the file
+        # Obtener tamaño del archivo
         file_size = os.path.getsize(filepath)
 
         transcribe_start = time.time()
-        # Process the file with Whisper
+        # Procesar archivo con Whisper
         result = model.transcribe(filepath)
-        
         transcribe_end = time.time()
-        os.remove(filepath)  # Remove the file after processing
+        os.remove(filepath)
 
         result = {
             "transcription": result["text"],
             "stats": {
-                "total_processing_time": transcribe_end - transcribe_start,
+                "total_processing_time": round(transcribe_end - transcribe_start, 2),
                 "words_per_second": round(len(result["text"]) / (transcribe_end - transcribe_start), 2),
                 "file_size_in_bytes": file_size
             },
@@ -54,7 +51,7 @@ def transcribe_audio():
 
     return jsonify({"error": "Invalid request"}), 400
 
-
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True,host='0.0.0.0',port=port)
+    # Escucha en todas las interfaces internas del contenedor
+    port = 5000
+    app.run(debug=True, host='0.0.0.0', port=port)
