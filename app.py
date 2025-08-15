@@ -5,7 +5,7 @@ import time
 
 app = Flask(__name__)
 
-# Carga del modelo Whisper
+# Carga del modelo Whisper ##
 model = whisper.load_model("base")
 
 @app.route("/")
