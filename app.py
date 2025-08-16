@@ -11,7 +11,7 @@ model = whisper.load_model("base")
 
 @app.route("/")
 def hello():
-    return "asd"
+    return "asdddddd"
 
 
 @app.route('/transcribe', methods=['POST'])
