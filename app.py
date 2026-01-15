@@ -74,7 +74,7 @@ def ocr_image():
     - 'type': "pdf" o "image"
     
     Campos opcionales:
-    - 'languages': lista de idiomas (default: ['es', 'en'])
+    - 'language': un idioma (default: 'es'). Ejemplos: 'es', 'en', 'fr', 'de'
     
     Formatos soportados: PNG, JPEG, WebP, BMP, GIF, TIFF, PDF
     
@@ -82,27 +82,27 @@ def ocr_image():
     {
         "base64": "JVBERi0xLjQKJ...",
         "type": "pdf",
-        "languages": ["es"]  // opcional
+        "language": "es"
     }
-    """
-    start = time.time()
     
+    Retorna: texto plano con el contenido extraído
+    """
     # Verificar que se envió JSON
     if not request.is_json:
-        return jsonify({"error": "Content-Type debe ser application/json"}), 400
+        return "Error: Content-Type debe ser application/json", 400
     
     data = request.get_json()
     
     # Verificar campos requeridos
     if 'base64' not in data:
-        return jsonify({"error": "Falta el campo 'base64' con el archivo en base64"}), 400
+        return "Error: Falta el campo 'base64' con el archivo en base64", 400
     
     if 'type' not in data:
-        return jsonify({"error": "Falta el campo 'type'. Debe ser 'pdf' o 'image'"}), 400
+        return "Error: Falta el campo 'type'. Debe ser 'pdf' o 'image'", 400
     
     file_type = data['type'].lower()
     if file_type not in ['pdf', 'image']:
-        return jsonify({"error": "El campo 'type' debe ser 'pdf' o 'image'"}), 400
+        return "Error: El campo 'type' debe ser 'pdf' o 'image'", 400
     
     try:
         file_base64 = data['base64']
@@ -114,25 +114,27 @@ def ocr_image():
         # Decodificar el base64
         file_bytes = base64.b64decode(file_base64)
         
-        # Obtener idiomas personalizados si se proporcionaron
-        languages = data.get('languages', ['es', 'en'])
+        # Obtener idioma (solo uno permitido)
+        language = data.get('language', 'es')
         
-        # Si se usan idiomas diferentes a los del reader global, crear uno nuevo
-        if set(languages) == {'es', 'en'}:
+        # Validar que sea un string
+        if not isinstance(language, str):
+            return "Error: El campo 'language' debe ser un string con un solo idioma", 400
+        
+        # Si es español, usar el reader global, sino crear uno nuevo
+        if language == 'es':
             reader = ocr_reader
         else:
-            reader = easyocr.Reader(languages, gpu=False)
+            reader = easyocr.Reader([language], gpu=False)
         
         # Determinar si es PDF según el type indicado
         is_pdf = file_type == 'pdf'
         
         images_to_process = []
-        pdf_pages_count = 0
         
         if is_pdf:
             # Convertir PDF a imágenes (una por página)
             pdf_images = convert_from_bytes(file_bytes, dpi=200)
-            pdf_pages_count = len(pdf_images)
             
             for pdf_image in pdf_images:
                 if pdf_image.mode != 'RGB':
@@ -145,78 +147,28 @@ def ocr_image():
                 image = image.convert('RGB')
             images_to_process.append(image)
         
-        ocr_start = time.time()
-        
         # Procesar todas las imágenes (una si es imagen, múltiples si es PDF)
         all_texts = []
-        all_detailed_results = []
-        pages_results = []
         
-        for page_idx, img in enumerate(images_to_process):
+        for img in images_to_process:
             image_np = np.array(img)
             
             # Realizar OCR
             results = reader.readtext(image_np)
             
-            page_texts = []
-            page_detailed = []
-            
             for (bbox, text, confidence) in results:
-                page_texts.append(text)
-                # Convertir tipos numpy a tipos nativos de Python para JSON
-                bbox_serializable = [[float(coord) for coord in point] for point in bbox]
-                page_detailed.append({
-                    "text": text,
-                    "confidence": float(round(confidence, 4)),
-                    "bounding_box": bbox_serializable
-                })
-            
-            all_texts.extend(page_texts)
-            all_detailed_results.extend(page_detailed)
-            
-            # Si es PDF, guardamos resultados por página
-            if is_pdf:
-                pages_results.append({
-                    "page": page_idx + 1,
-                    "text": ' '.join(page_texts),
-                    "detections_count": len(results),
-                    "detailed_results": page_detailed
-                })
-        
-        ocr_end = time.time()
+                all_texts.append(text)
         
         # Unir todo el texto en un solo string
         full_text = ' '.join(all_texts)
         
-        # Construir respuesta
-        response = {
-            "text": full_text,
-            "detailed_results": all_detailed_results,
-            "stats": {
-                "total_processing_time": round(ocr_end - start, 4),
-                "ocr_time": round(ocr_end - ocr_start, 4),
-                "detections_count": len(all_detailed_results),
-                "languages_used": languages,
-                "file_type": "pdf" if is_pdf else "image"
-            }
-        }
-        
-        # Agregar información específica de PDF si aplica
-        if is_pdf:
-            response["stats"]["pdf_pages"] = pdf_pages_count
-            response["pages"] = pages_results
-        else:
-            response["stats"]["image_size"] = {
-                "width": images_to_process[0].width,
-                "height": images_to_process[0].height
-            }
-        
-        return jsonify(response)
+        # Devolver solo el texto plano
+        return full_text, 200, {'Content-Type': 'text/plain; charset=utf-8'}
         
     except base64.binascii.Error:
-        return jsonify({"error": "El archivo no está correctamente codificado en base64"}), 400
+        return "Error: El archivo no está correctamente codificado en base64", 400
     except Exception as e:
-        return jsonify({"error": f"Error procesando el archivo: {str(e)}"}), 500
+        return f"Error procesando el archivo: {str(e)}", 500
 
 
 if __name__ == "__main__":
