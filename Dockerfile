@@ -13,8 +13,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr-deu \
     tesseract-ocr-ita \
     tesseract-ocr-por \
+    wget \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+
+# Crear directorio para modelos estándar (medium) y descargarlos
+RUN mkdir -p /usr/share/tesseract-ocr/5/tessdata_standard \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_standard/spa.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/spa.traineddata \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_standard/eng.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_standard/fra.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/fra.traineddata \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_standard/deu.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/deu.traineddata \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_standard/ita.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/ita.traineddata \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_standard/por.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/por.traineddata
 
 # Configura el directorio de trabajo
 WORKDIR /app

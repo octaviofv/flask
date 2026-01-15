@@ -31,6 +31,12 @@ LANGUAGE_MAP = {
     'ar': 'ara'
 }
 
+# Rutas de los modelos de Tesseract
+TESSDATA_PATHS = {
+    'fast': '/usr/share/tesseract-ocr/5/tessdata',
+    'medium': '/usr/share/tesseract-ocr/5/tessdata_standard'
+}
+
 @app.route("/")
 def hello():
     return "asdddddd"
@@ -88,6 +94,7 @@ def ocr_image():
     
     Campos opcionales:
     - 'language': un idioma (default: 'es'). Ejemplos: 'es', 'en', 'fr', 'de'
+    - 'model': modelo de OCR a usar (default: 'medium'). Opciones: 'fast', 'medium'
     
     Formatos soportados: PNG, JPEG, WebP, BMP, GIF, TIFF, PDF
     
@@ -95,7 +102,8 @@ def ocr_image():
     {
         "base64": "JVBERi0xLjQKJ...",
         "type": "pdf",
-        "language": "es"
+        "language": "es",
+        "model": "medium"
     }
     
     Retorna: texto plano con el contenido extraído
@@ -137,6 +145,14 @@ def ocr_image():
         # Convertir código de idioma a código de Tesseract
         tesseract_lang = LANGUAGE_MAP.get(language, language)
         
+        # Obtener modelo (fast o medium, default: medium)
+        model_type = data.get('model', 'medium').lower()
+        if model_type not in ['fast', 'medium']:
+            return "Error: El campo 'model' debe ser 'fast' o 'medium'", 400
+        
+        # Configurar la ruta de tessdata según el modelo
+        tessdata_path = TESSDATA_PATHS.get(model_type)
+        
         # Determinar si es PDF según el type indicado
         is_pdf = file_type == 'pdf'
         
@@ -161,8 +177,9 @@ def ocr_image():
         all_texts = []
         
         for img in images_to_process:
-            # Realizar OCR con Tesseract
-            text = pytesseract.image_to_string(img, lang=tesseract_lang)
+            # Realizar OCR con Tesseract usando el modelo seleccionado
+            config = f'--tessdata-dir {tessdata_path}'
+            text = pytesseract.image_to_string(img, lang=tesseract_lang, config=config)
             if text.strip():
                 all_texts.append(text.strip())
         
