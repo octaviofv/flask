@@ -26,6 +26,15 @@ RUN mkdir -p /usr/share/tesseract-ocr/5/tessdata_standard \
     && wget -q -O /usr/share/tesseract-ocr/5/tessdata_standard/ita.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/ita.traineddata \
     && wget -q -O /usr/share/tesseract-ocr/5/tessdata_standard/por.traineddata https://github.com/tesseract-ocr/tessdata/raw/main/por.traineddata
 
+# Crear directorio para modelos best (pro) y descargarlos
+RUN mkdir -p /usr/share/tesseract-ocr/5/tessdata_best \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_best/spa.traineddata https://github.com/tesseract-ocr/tessdata_best/raw/main/spa.traineddata \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_best/eng.traineddata https://github.com/tesseract-ocr/tessdata_best/raw/main/eng.traineddata \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_best/fra.traineddata https://github.com/tesseract-ocr/tessdata_best/raw/main/fra.traineddata \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_best/deu.traineddata https://github.com/tesseract-ocr/tessdata_best/raw/main/deu.traineddata \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_best/ita.traineddata https://github.com/tesseract-ocr/tessdata_best/raw/main/ita.traineddata \
+    && wget -q -O /usr/share/tesseract-ocr/5/tessdata_best/por.traineddata https://github.com/tesseract-ocr/tessdata_best/raw/main/por.traineddata
+
 # Configura el directorio de trabajo
 WORKDIR /app
 

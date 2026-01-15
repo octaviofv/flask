@@ -34,7 +34,8 @@ LANGUAGE_MAP = {
 # Rutas de los modelos de Tesseract
 TESSDATA_PATHS = {
     'fast': '/usr/share/tesseract-ocr/5/tessdata',
-    'medium': '/usr/share/tesseract-ocr/5/tessdata_standard'
+    'medium': '/usr/share/tesseract-ocr/5/tessdata_standard',
+    'pro': '/usr/share/tesseract-ocr/5/tessdata_best'
 }
 
 @app.route("/")
@@ -94,7 +95,7 @@ def ocr_image():
     
     Campos opcionales:
     - 'language': un idioma (default: 'es'). Ejemplos: 'es', 'en', 'fr', 'de'
-    - 'model': modelo de OCR a usar (default: 'medium'). Opciones: 'fast', 'medium'
+    - 'model': modelo de OCR a usar (default: 'medium'). Opciones: 'fast', 'medium', 'pro'
     
     Formatos soportados: PNG, JPEG, WebP, BMP, GIF, TIFF, PDF
     
@@ -145,10 +146,10 @@ def ocr_image():
         # Convertir código de idioma a código de Tesseract
         tesseract_lang = LANGUAGE_MAP.get(language, language)
         
-        # Obtener modelo (fast o medium, default: medium)
+        # Obtener modelo (fast, medium o pro, default: medium)
         model_type = data.get('model', 'medium').lower()
-        if model_type not in ['fast', 'medium']:
-            return "Error: El campo 'model' debe ser 'fast' o 'medium'", 400
+        if model_type not in ['fast', 'medium', 'pro']:
+            return "Error: El campo 'model' debe ser 'fast', 'medium' o 'pro'", 400
         
         # Configurar la ruta de tessdata según el modelo
         tessdata_path = TESSDATA_PATHS.get(model_type)
