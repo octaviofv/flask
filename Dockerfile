@@ -1,7 +1,7 @@
 # Usa la imagen base de Python
 FROM python:3.9-slim
 
-# Instala git y dependencias para Whisper y EasyOCR
+# Instala git y dependencias para Whisper, EasyOCR y PDF
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     ffmpeg \
@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     libgomp1 \
+    poppler-utils \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
