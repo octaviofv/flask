@@ -1,17 +1,18 @@
 # Usa la imagen base de Python
 FROM python:3.9-slim
 
-# Instala git y dependencias para Whisper, EasyOCR y PDF
+# Instala git y dependencias para Whisper, Tesseract y PDF
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     ffmpeg \
-    libgl1 \
-    libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender1 \
-    libgomp1 \
     poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-spa \
+    tesseract-ocr-eng \
+    tesseract-ocr-fra \
+    tesseract-ocr-deu \
+    tesseract-ocr-ita \
+    tesseract-ocr-por \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

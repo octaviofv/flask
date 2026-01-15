@@ -1,13 +1,12 @@
 from flask import Flask, request, jsonify
 import whisper
-import easyocr
+import pytesseract
 import os
 import time
 import json
 import base64
 from io import BytesIO
 from PIL import Image
-import numpy as np
 from pdf2image import convert_from_bytes
 
 app = Flask(__name__)
@@ -15,8 +14,22 @@ app = Flask(__name__)
 # Load Whisper model
 model = whisper.load_model("base")
 
-# Load EasyOCR reader (español e inglés por defecto)
-ocr_reader = easyocr.Reader(['es', 'en'], gpu=False)
+# Mapeo de códigos de idioma a códigos de Tesseract
+LANGUAGE_MAP = {
+    'es': 'spa',
+    'en': 'eng',
+    'fr': 'fra',
+    'de': 'deu',
+    'it': 'ita',
+    'pt': 'por',
+    'nl': 'nld',
+    'pl': 'pol',
+    'ru': 'rus',
+    'ja': 'jpn',
+    'zh': 'chi_sim',
+    'ko': 'kor',
+    'ar': 'ara'
+}
 
 @app.route("/")
 def hello():
@@ -121,11 +134,8 @@ def ocr_image():
         if not isinstance(language, str):
             return "Error: El campo 'language' debe ser un string con un solo idioma", 400
         
-        # Si es español, usar el reader global, sino crear uno nuevo
-        if language == 'es':
-            reader = ocr_reader
-        else:
-            reader = easyocr.Reader([language], gpu=False)
+        # Convertir código de idioma a código de Tesseract
+        tesseract_lang = LANGUAGE_MAP.get(language, language)
         
         # Determinar si es PDF según el type indicado
         is_pdf = file_type == 'pdf'
@@ -151,16 +161,13 @@ def ocr_image():
         all_texts = []
         
         for img in images_to_process:
-            image_np = np.array(img)
-            
-            # Realizar OCR
-            results = reader.readtext(image_np)
-            
-            for (bbox, text, confidence) in results:
-                all_texts.append(text)
+            # Realizar OCR con Tesseract
+            text = pytesseract.image_to_string(img, lang=tesseract_lang)
+            if text.strip():
+                all_texts.append(text.strip())
         
         # Unir todo el texto en un solo string
-        full_text = ' '.join(all_texts)
+        full_text = '\n'.join(all_texts)
         
         # Devolver solo el texto plano
         return full_text, 200, {'Content-Type': 'text/plain; charset=utf-8'}
