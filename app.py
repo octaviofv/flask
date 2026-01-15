@@ -60,7 +60,7 @@ def transcribe_audio():
 
         return jsonify(result)
 
-    return jsonify({\"error\": \"Invalid request\"}), 400
+    return jsonify({"error": "Invalid request"}), 400
 
 
 @app.route('/ocr', methods=['POST'])
