@@ -40,7 +40,7 @@ TESSDATA_PATHS = {
 
 @app.route("/")
 def hello():
-    return "asdddddd"
+    return "Servicio de OCR y Transcripción Activo"
 
 
 @app.route('/transcribe', methods=['POST'])
@@ -87,27 +87,7 @@ def transcribe_audio():
 @app.route('/ocr', methods=['POST'])
 def ocr_image():
     """
-    Endpoint para realizar OCR en una imagen o PDF en base64.
-    
-    Campos requeridos:
-    - 'base64': string en base64 con el contenido del archivo
-    - 'type': "pdf" o "image"
-    
-    Campos opcionales:
-    - 'language': un idioma (default: 'es'). Ejemplos: 'es', 'en', 'fr', 'de'
-    - 'model': modelo de OCR a usar (default: 'medium'). Opciones: 'fast', 'medium', 'pro'
-    
-    Formatos soportados: PNG, JPEG, WebP, BMP, GIF, TIFF, PDF
-    
-    Ejemplo de request:
-    {
-        "base64": "JVBERi0xLjQKJ...",
-        "type": "pdf",
-        "language": "es",
-        "model": "medium"
-    }
-    
-    Retorna: texto plano con el contenido extraído
+    Endpoint para realizar OCR en una imagen o PDF en base64 con pre-procesamiento optimizado.
     """
     # Verificar que se envió JSON
     if not request.is_json:
@@ -136,69 +116,67 @@ def ocr_image():
         # Decodificar el base64
         file_bytes = base64.b64decode(file_base64)
         
-        # Obtener idioma (solo uno permitido)
+        # Obtener idioma 
         language = data.get('language', 'es')
-        
-        # Validar que sea un string
         if not isinstance(language, str):
-            return "Error: El campo 'language' debe ser un string con un solo idioma", 400
+            return "Error: El campo 'language' debe ser un string", 400
         
-        # Convertir código de idioma a código de Tesseract
         tesseract_lang = LANGUAGE_MAP.get(language, language)
         
-        # Obtener modelo (fast, medium o pro, default: medium)
+        # Obtener modelo
         model_type = data.get('model', 'medium').lower()
         if model_type not in ['fast', 'medium', 'pro']:
             return "Error: El campo 'model' debe ser 'fast', 'medium' o 'pro'", 400
         
-        # Configurar la ruta de tessdata según el modelo
         tessdata_path = TESSDATA_PATHS.get(model_type)
-        
-        # Determinar si es PDF según el type indicado
         is_pdf = file_type == 'pdf'
         
         images_to_process = []
         
+        # --- PROCESAMIENTO DE IMÁGENES ---
         if is_pdf:
-            # Convertir PDF a imágenes (una por página)
-            pdf_images = convert_from_bytes(file_bytes, dpi=400)
-            
-            for pdf_image in pdf_images:
-                # Convertir a escala de grises
-                pdf_image = pdf_image.convert('L')
-                
-                # Redimensionar al doble de tamaño usando LANCZOS
-                new_size = (pdf_image.width * 2, pdf_image.height * 2)
-                pdf_image = pdf_image.resize(new_size, Image.Resampling.LANCZOS)
-                
-                images_to_process.append(pdf_image)
+            # DPI 300 es el estándar óptimo. 400+ puede introducir ruido excesivo.
+            pdf_images = convert_from_bytes(file_bytes, dpi=300)
+            for img in pdf_images:
+                images_to_process.append(img)
         else:
-            # Es una imagen normal
-            image = Image.open(BytesIO(file_bytes))
-            
-            # Convertir a escala de grises
-            image = image.convert('L')
-            
-            # Redimensionar al doble de tamaño usando LANCZOS
-            new_size = (image.width * 2, image.height * 2)
-            image = image.resize(new_size, Image.Resampling.LANCZOS)
-            
-            images_to_process.append(image)
+            img = Image.open(BytesIO(file_bytes))
+            images_to_process.append(img)
         
-        # Procesar todas las imágenes (una si es imagen, múltiples si es PDF)
         all_texts = []
         
+        # --- PRE-PROCESAMIENTO Y OCR ---
         for img in images_to_process:
-            # Realizar OCR con Tesseract usando el modelo seleccionado
-            config = f'--tessdata-dir {tessdata_path}'
+            # 1. Convertir a Escala de Grises
+            img = img.convert('L')
+            
+            # 2. BINARIZACIÓN (Thresholding) - CRÍTICO
+            # Esto convierte cualquier gris "sucio" (ruido) en blanco, y el texto oscuro en negro puro.
+            # Ayuda a diferenciar # de % y limpia bordes.
+            # El valor 160 es el umbral; ajusta si el texto sale muy delgado (bajar a 140) o muy grueso (subir a 180).
+            img = img.point(lambda p: p > 160 and 255)
+            
+            # 3. Re-escalado moderado (1.5x) con filtro LANCZOS
+            # Evitamos 2x porque en imágenes sucias deforma los caracteres.
+            new_size = (int(img.width * 1.5), int(img.height * 1.5))
+            img = img.resize(new_size, Image.Resampling.LANCZOS)
+            
+            # 4. Configuración Tesseract
+            # --psm 6: Asume un bloque de texto uniforme. Vital para números y códigos.
+            # --oem 3: Motor Neural (LSTM) por defecto.
+            # tessedit_char_whitelist: Opcional, pero si solo esperas ciertos caracteres, descoméntalo.
+            # config = f'--tessdata-dir "{tessdata_path}" --oem 3 --psm 6 -c tessedit_char_whitelist="0123456789#abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:.- "'
+            
+            # Usamos configuración estándar robusta
+            config = f'--tessdata-dir "{tessdata_path}" --oem 3 --psm 6'
+            
             text = pytesseract.image_to_string(img, lang=tesseract_lang, config=config)
+            
             if text.strip():
                 all_texts.append(text.strip())
         
-        # Unir todo el texto en un solo string
         full_text = '\n\n--- Página ---\n\n'.join(all_texts)
         
-        # Devolver solo el texto plano
         return full_text, 200, {'Content-Type': 'text/plain; charset=utf-8'}
         
     except base64.binascii.Error:
@@ -209,4 +187,4 @@ def ocr_image():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(debug=True,host='0.0.0.0',port=port)
+    app.run(debug=True, host='0.0.0.0', port=port)
