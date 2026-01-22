@@ -161,17 +161,28 @@ def ocr_image():
         
         if is_pdf:
             # Convertir PDF a imágenes (una por página)
-            pdf_images = convert_from_bytes(file_bytes, dpi=300)
+            pdf_images = convert_from_bytes(file_bytes, dpi=400)
             
             for pdf_image in pdf_images:
-                if pdf_image.mode != 'RGB':
-                    pdf_image = pdf_image.convert('RGB')
+                # Convertir a escala de grises
+                pdf_image = pdf_image.convert('L')
+                
+                # Redimensionar al doble de tamaño usando LANCZOS
+                new_size = (pdf_image.width * 2, pdf_image.height * 2)
+                pdf_image = pdf_image.resize(new_size, Image.Resampling.LANCZOS)
+                
                 images_to_process.append(pdf_image)
         else:
             # Es una imagen normal
             image = Image.open(BytesIO(file_bytes))
-            if image.mode != 'RGB':
-                image = image.convert('RGB')
+            
+            # Convertir a escala de grises
+            image = image.convert('L')
+            
+            # Redimensionar al doble de tamaño usando LANCZOS
+            new_size = (image.width * 2, image.height * 2)
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+            
             images_to_process.append(image)
         
         # Procesar todas las imágenes (una si es imagen, múltiples si es PDF)
@@ -185,7 +196,7 @@ def ocr_image():
                 all_texts.append(text.strip())
         
         # Unir todo el texto en un solo string
-        full_text = '\n'.join(all_texts)
+        full_text = '\n\n--- Página ---\n\n'.join(all_texts)
         
         # Devolver solo el texto plano
         return full_text, 200, {'Content-Type': 'text/plain; charset=utf-8'}
