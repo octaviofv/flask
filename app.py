@@ -131,12 +131,24 @@ def ocr_image():
         tessdata_path = TESSDATA_PATHS.get(model_type)
         is_pdf = file_type == 'pdf'
         
+        # --- PARÁMETROS OPCIONALES DE CONFIGURACIÓN ---
+        # DPI: Default 300 (estándar). Útil subirlo para scans, mantener para digitales.
+        dpi_val = int(data.get('dpi', 300))
+        
+        # PSM: Default 3 (Auto). Cambiar a 6 si es un bloque de texto uniforme.
+        psm_val = int(data.get('psm', 3))
+        
+        # Binarización: Default False (mejor para digitales). True para scans sucios.
+        do_binarize = data.get('binarize', False)
+        
+        # Resize: Default 1 (sin cambios). > 1 para ampliar imágenes pequeñas/pixeladas.
+        resize_factor = float(data.get('resize_factor', 1))
+        
         images_to_process = []
         
         # --- PROCESAMIENTO DE IMÁGENES ---
         if is_pdf:
-            # DPI 300 es el estándar óptimo. 400+ puede introducir ruido excesivo.
-            pdf_images = convert_from_bytes(file_bytes, dpi=300)
+            pdf_images = convert_from_bytes(file_bytes, dpi=dpi_val)
             for img in pdf_images:
                 images_to_process.append(img)
         else:
@@ -144,31 +156,24 @@ def ocr_image():
             images_to_process.append(img)
         
         all_texts = []
-        
+
         # --- PRE-PROCESAMIENTO Y OCR ---
         for img in images_to_process:
-            # 1. Convertir a Escala de Grises
+            # 1. Convertir a Escala de Grises (Base para todo)
             img = img.convert('L')
             
-            # 2. BINARIZACIÓN (Thresholding) - CRÍTICO
-            # Esto convierte cualquier gris "sucio" (ruido) en blanco, y el texto oscuro en negro puro.
-            # Ayuda a diferenciar # de % y limpia bordes.
-            # El valor 160 es el umbral; ajusta si el texto sale muy delgado (bajar a 140) o muy grueso (subir a 180).
-            img = img.point(lambda p: p > 160 and 255)
+            # 2. BINARIZACIÓN (Opcional)
+            if do_binarize:
+                # Umbral 160 es un buen estándar para limpiar ruido gris
+                img = img.point(lambda p: p > 160 and 255)
             
-            # 3. Re-escalado moderado (1.5x) con filtro LANCZOS
-            # Evitamos 2x porque en imágenes sucias deforma los caracteres.
-            new_size = (int(img.width * 1.5), int(img.height * 1.5))
-            img = img.resize(new_size, Image.Resampling.LANCZOS)
+            # 3. RE-ESCALADO (Opcional)
+            if resize_factor > 1:
+                new_size = (int(img.width * resize_factor), int(img.height * resize_factor))
+                img = img.resize(new_size, Image.Resampling.LANCZOS)
             
             # 4. Configuración Tesseract
-            # --psm 6: Asume un bloque de texto uniforme. Vital para números y códigos.
-            # --oem 3: Motor Neural (LSTM) por defecto.
-            # tessedit_char_whitelist: Opcional, pero si solo esperas ciertos caracteres, descoméntalo.
-            # config = f'--tessdata-dir "{tessdata_path}" --oem 3 --psm 6 -c tessedit_char_whitelist="0123456789#abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:.- "'
-            
-            # Usamos configuración estándar robusta
-            config = f'--tessdata-dir "{tessdata_path}" --oem 3 --psm 6'
+            config = f'--tessdata-dir "{tessdata_path}" --oem 3 --psm {psm_val}'
             
             text = pytesseract.image_to_string(img, lang=tesseract_lang, config=config)
             
