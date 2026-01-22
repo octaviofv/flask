@@ -161,7 +161,7 @@ def ocr_image():
         
         if is_pdf:
             # Convertir PDF a imágenes (una por página)
-            pdf_images = convert_from_bytes(file_bytes, dpi=200)
+            pdf_images = convert_from_bytes(file_bytes, dpi=300)
             
             for pdf_image in pdf_images:
                 if pdf_image.mode != 'RGB':
