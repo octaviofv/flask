@@ -175,6 +175,11 @@ def ocr_image():
             # 4. Configuración Tesseract
             config = f'--tessdata-dir "{tessdata_path}" --oem 3 --psm {psm_val}'
             
+            # Whitelist opcional (si el usuario quiere restringir caracteres)
+            whitelist = data.get('tessedit_char_whitelist', '')
+            if whitelist:
+                config += f' -c tessedit_char_whitelist="{whitelist}"'
+            
             text = pytesseract.image_to_string(img, lang=tesseract_lang, config=config)
             
             if text.strip():
